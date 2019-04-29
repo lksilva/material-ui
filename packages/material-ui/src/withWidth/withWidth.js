@@ -32,76 +32,71 @@ const withWidth = (options = {}) => Component => {
     resizeInterval = 166, // Corresponds to 10 frames at 60 Hz.
   } = options;
 
-  class WithWidth extends React.Component {
-    constructor(props) {
-      super(props);
+function WithWidth(props) {
+  let handleResize = null;
+  const getWidth = (innerWidth = window.innerWidth) => {
+    const breakpoints = props.theme.breakpoints;
+    let width = null;
 
-      this.state = {
-        width: noSSR ? this.getWidth() : undefined,
-      };
+    /**
+     * Start with the slowest value as low end devices often have a small screen.
+     *
+     * innerWidth |xs      sm      md      lg      xl
+     *            |-------|-------|-------|-------|------>
+     * width      |  xs   |  sm   |  md   |  lg   |  xl
+     */
+    let index = 1;
+    while (width === null && index < breakpointKeys.length) {
+      const currentWidth = breakpointKeys[index];
 
-      if (typeof window !== 'undefined') {
-        this.handleResize = debounce(() => {
-          const width2 = this.getWidth();
-          if (width2 !== this.state.width) {
-            this.setState({
-              width: width2,
-            });
-          }
-        }, resizeInterval);
+      // @media are inclusive, so reproduce the behavior here.
+      if (innerWidth < breakpoints.values[currentWidth]) {
+        width = breakpointKeys[index - 1];
+        break;
       }
+
+      index += 1;
     }
 
-    componentDidMount() {
-      const width = this.getWidth();
-      if (width !== this.state.width) {
-        this.setState({
-          width,
-        });
-      }
-    }
+    width = width || 'xl';
+    return width;
+  }
 
-    componentWillUnmount() {
-      this.handleResize.clear();
-    }
+    const initialPayload= noSSR ? getWidth() : undefined;
+    const [widthState, setWidth] =  React.useState(initialPayload);
 
-    getWidth(innerWidth = window.innerWidth) {
-      const breakpoints = this.props.theme.breakpoints;
-      let width = null;
-
-      /**
-       * Start with the slowest value as low end devices often have a small screen.
-       *
-       * innerWidth |xs      sm      md      lg      xl
-       *            |-------|-------|-------|-------|------>
-       * width      |  xs   |  sm   |  md   |  lg   |  xl
-       */
-      let index = 1;
-      while (width === null && index < breakpointKeys.length) {
-        const currentWidth = breakpointKeys[index];
-
-        // @media are inclusive, so reproduce the behavior here.
-        if (innerWidth < breakpoints.values[currentWidth]) {
-          width = breakpointKeys[index - 1];
-          break;
+    if (typeof window !== 'undefined') {
+      handleResize = debounce(() => {
+        const width2 = getWidth();
+        if (width2 !== widthState) {
+          setWidth(width2)
         }
+      }, resizeInterval);
+    };
 
-        index += 1;
+    React.useEffect(() => {
+      const width2 = getWidth();
+      if (width2 !== widthState) {
+        setWidth(width2);
       }
+    }, []);
 
-      width = width || 'xl';
-      return width;
-    }
+    React.useEffect(() => {
+      return () => {
+        if (handleResize) {
+          handleResize.clear();
+        }
+      }
+    }, [handleResize]);
 
-    render() {
       const { initialWidth, theme, width, ...other } = getThemeProps({
-        theme: this.props.theme,
+        theme: props.theme,
         name: 'MuiWithWidth',
-        props: { ...this.props },
+        props: { ...props },
       });
 
       const more = {
-        width: width || this.state.width || initialWidth || initialWidthOption,
+        width: width || widthState || initialWidth || initialWidthOption,
         ...other,
       };
 
@@ -122,10 +117,9 @@ const withWidth = (options = {}) => Component => {
       return (
         <React.Fragment>
           <Component {...more} />
-          <EventListener target="window" onResize={this.handleResize} />
+          <EventListener target="window" onResize={handleResize} />
         </React.Fragment>
       );
-    }
   }
 
   WithWidth.propTypes = {
