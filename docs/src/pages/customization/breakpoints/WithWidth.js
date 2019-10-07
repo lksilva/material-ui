@@ -7,9 +7,11 @@ const components = {
   sm: 'em',
   md: 'u',
   lg: 'del',
+  xs: 'b',
+  xl: 'h5',
 };
 
-function WithWidth(props) {
+function WithWidthComp(props) {
   const { width } = props;
   const Component = components[width] || 'span';
 
@@ -20,8 +22,8 @@ function WithWidth(props) {
   );
 }
 
-WithWidth.propTypes = {
-  width: PropTypes.string.isRequired,
+WithWidthComp.propTypes = {
+  width: PropTypes.oneOf(['lg', 'md', 'sm', 'xl', 'xs']).isRequired,
 };
 
-export default withWidth()(WithWidth);
+export default withWidth()(WithWidthComp);
